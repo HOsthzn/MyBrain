@@ -1,0 +1,29 @@
+# My Brain — Configuration
+# Copy this file to config.yaml and fill in your values.
+# config.yaml is gitignored to keep personal paths out of version control.
+
+vault_path: "/path/to/your/obsidian/vault"
+
+notes_folder: "00 - Inbox"
+knowledge_folder: "01 - Knowledge"
+resources_folder: "02 - Resources"
+staging_folder: "04 - Staging"
+prompts_folder: "03 - NotebookLM Prompts"
+templates_folder: "Templates"
+
+default_tags:
+  - "ai-generated"
+  - "needs-review"
+
+note_format:
+  frontmatter: true
+  include_sources: true
+  link_style: "wikilink"
+
+search:
+  max_resources: 10
+  preferred_sources:
+    - youtube
+    - article
+    - documentation
+    - paper

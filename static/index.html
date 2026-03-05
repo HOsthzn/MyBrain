@@ -1,0 +1,2317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Brain — Control Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --card-h: #1c1c28;
+    --cyan: #00e5ff;
+    --violet: #a855f7;
+    --amber: #f59e0b;
+    --emerald: #10b981;
+    --rose: #f43f5e;
+    --text: #e8e8ef;
+    --text2: #8888a0;
+    --muted: #55556a;
+    --border: #2a2a3a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* ===== LAYOUT ===== */
+  .app { max-width:1000px; margin:0 auto; padding:24px; }
+
+  .header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 0 32px; border-bottom:1px solid var(--border); margin-bottom:32px;
+  }
+  .logo { font-size:28px; font-weight:800; letter-spacing:-1.5px; }
+  .logo span { background:linear-gradient(135deg,var(--cyan),var(--violet)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header-status {
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    display:flex; gap:16px; color:var(--text2);
+  }
+  .status-dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin-right:4px; }
+  .status-dot.ok { background:var(--emerald); }
+  .status-dot.err { background:var(--rose); }
+
+  /* ===== TABS ===== */
+  .tabs {
+    display:flex; gap:4px; margin-bottom:28px;
+    border-bottom:1px solid var(--border); padding-bottom:0;
+  }
+  .tab {
+    padding:10px 20px; font-size:13px; font-weight:600;
+    color:var(--text2); cursor:pointer; border:none; background:none;
+    border-bottom:2px solid transparent; transition:all .2s;
+    font-family:'Sora',sans-serif;
+  }
+  .tab:hover { color:var(--text); }
+  .tab.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+
+  .panel { display:none; }
+  .panel.active { display:block; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:24px; margin-bottom:16px;
+    transition:all .2s;
+  }
+  .card:hover { background:var(--card-h); }
+  .card-title {
+    font-weight:700; font-size:15px; margin-bottom:8px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card-title .icon { font-size:20px; }
+  .card-desc { color:var(--text2); font-size:13px; }
+
+  /* ===== PIPELINE ===== */
+  .pipeline { display:flex; flex-direction:column; gap:0; }
+  .pipe-step {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:24px;
+    position:relative; transition:all .3s;
+  }
+  .pipe-step.done { border-color:rgba(16,185,129,.3); }
+  .pipe-step.active { border-color:rgba(0,229,255,.4); box-shadow:0 0 20px rgba(0,229,255,.08); }
+  .pipe-step.waiting { opacity:.65; pointer-events:none; }
+  .pipe-connector {
+    display:flex; justify-content:center; padding:6px 0;
+    color:var(--muted); font-size:18px;
+  }
+
+  .step-header {
+    display:flex; align-items:center; gap:12px; margin-bottom:12px;
+  }
+  .step-num {
+    width:32px; height:32px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .step-num.s1 { background:rgba(244,63,94,.12); color:var(--rose); }
+  .step-num.s2 { background:rgba(0,229,255,.12); color:var(--cyan); }
+  .step-num.s3 { background:rgba(168,85,247,.12); color:var(--violet); }
+  .step-num.s4 { background:rgba(245,158,11,.12); color:var(--amber); }
+  .step-num.s5 { background:rgba(16,185,129,.12); color:var(--emerald); }
+
+  .step-title { font-weight:700; font-size:15px; }
+  .step-subtitle { font-size:12px; color:var(--text2); font-family:'JetBrains Mono',monospace; }
+  .step-body { margin-top:12px; }
+
+  /* ===== INPUTS ===== */
+  input[type="text"], textarea {
+    width:100%; padding:10px 14px; border-radius:8px;
+    background:var(--bg); border:1px solid var(--border);
+    color:var(--text); font-family:'Sora',sans-serif; font-size:14px;
+    outline:none; transition:border .2s;
+  }
+  input:focus, textarea:focus { border-color:var(--cyan); }
+  textarea { resize:vertical; min-height:120px; font-family:'JetBrains Mono',monospace; font-size:12px; }
+
+  .input-group { margin-bottom:16px; }
+  .input-label {
+    font-size:12px; font-weight:600; color:var(--text2);
+    margin-bottom:6px; display:block;
+    font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:1px;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    padding:10px 24px; border-radius:8px; border:none;
+    font-family:'Sora',sans-serif; font-size:13px; font-weight:600;
+    cursor:pointer; transition:all .2s; display:inline-flex;
+    align-items:center; gap:8px;
+  }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-primary { background:var(--cyan); color:#000; }
+  .btn-primary:hover:not(:disabled) { background:#33ebff; transform:translateY(-1px); }
+  .btn-violet { background:var(--violet); color:#fff; }
+  .btn-violet:hover:not(:disabled) { background:#b86ef8; }
+  .btn-amber { background:var(--amber); color:#000; }
+  .btn-amber:hover:not(:disabled) { background:#fbb430; }
+  .btn-emerald { background:var(--emerald); color:#000; }
+  .btn-emerald:hover:not(:disabled) { background:#34d399; }
+  .btn-ghost {
+    background:transparent; border:1px solid var(--border);
+    color:var(--text2);
+  }
+  .btn-ghost:hover { border-color:var(--text2); color:var(--text); }
+
+  /* ===== LOG ===== */
+  .log {
+    background:#0d0d14; border:1px solid var(--border); border-radius:10px;
+    padding:16px; font-family:'JetBrains Mono',monospace; font-size:12px;
+    line-height:1.8; max-height:300px; overflow-y:auto; margin-top:12px;
+    color:var(--text2);
+  }
+  .log .info { color:var(--cyan); }
+  .log .ok { color:var(--emerald); }
+  .log .warn { color:var(--amber); }
+  .log .err { color:var(--rose); }
+
+  /* ===== DROP ZONE ===== */
+  .dropzone {
+    border:2px dashed var(--border); border-radius:14px;
+    padding:40px; text-align:center; cursor:pointer;
+    transition:all .2s; color:var(--text2);
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color:var(--cyan); background:rgba(0,229,255,.03);
+    color:var(--text);
+  }
+  .dropzone .dz-icon { font-size:36px; margin-bottom:8px; }
+  .dropzone .dz-text { font-size:14px; }
+  .dropzone .dz-sub { font-size:11px; color:var(--muted); margin-top:4px; font-family:'JetBrains Mono',monospace; }
+
+  /* ===== FILE LIST ===== */
+  .file-list { margin-top:12px; }
+  .file-item {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 12px; border-radius:8px; font-size:13px;
+    background:var(--bg); margin-bottom:4px;
+  }
+  .file-item .fname { font-family:'JetBrains Mono',monospace; font-size:12px; }
+  .file-item .fsize { color:var(--muted); font-size:11px; }
+
+  /* ===== PROMPT BOX ===== */
+  .prompt-box {
+    background:#0d0d14; border:1px solid var(--border); border-radius:10px;
+    padding:16px; font-family:'JetBrains Mono',monospace; font-size:11px;
+    line-height:1.7; max-height:400px; overflow-y:auto;
+    white-space:pre-wrap; color:var(--text2); margin-top:12px;
+  }
+
+  /* ===== RESULTS ===== */
+  .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; }
+  .result-card {
+    background:var(--bg); border:1px solid var(--border);
+    border-radius:10px; padding:14px;
+  }
+  .result-card .rc-title { font-weight:600; font-size:13px; margin-bottom:4px; }
+  .result-card .rc-val {
+    font-family:'JetBrains Mono',monospace; font-size:24px;
+    font-weight:700;
+  }
+  .rc-val.cyan { color:var(--cyan); }
+  .rc-val.emerald { color:var(--emerald); }
+  .rc-val.amber { color:var(--amber); }
+  .rc-val.violet { color:var(--violet); }
+
+  /* ===== CONFIG GRID ===== */
+  .config-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:640px) { .config-grid { grid-template-columns:1fr; } .result-grid { grid-template-columns:1fr; } }
+
+  /* ===== NOTE LIST ===== */
+  .note-item {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 14px; border-radius:8px;
+    background:var(--bg); margin-bottom:6px; font-size:13px;
+  }
+  .note-item .ni-icon { font-size:16px; }
+  .note-item .ni-path { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); margin-left:auto; }
+
+  /* ===== SPINNER ===== */
+  .spinner {
+    display:inline-block; width:16px; height:16px;
+    border:2px solid var(--border); border-top-color:var(--cyan);
+    border-radius:50%; animation:spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+
+  /* ===== FLASHCARD PLAYER ===== */
+  .fc-scene { perspective: 1000px; width: 100%; height: 220px; cursor: pointer; margin: 0 auto; }
+  .fc-card {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d; transition: transform 0.5s ease;
+    border-radius: 14px;
+  }
+  .fc-card.flipped { transform: rotateY(180deg); }
+  .fc-face {
+    position: absolute; inset: 0; border-radius: 14px;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 28px 32px; text-align: center;
+  }
+  .fc-front {
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .fc-back {
+    background: linear-gradient(135deg, rgba(0,229,255,.06), rgba(168,85,247,.06));
+    border: 1px solid rgba(0,229,255,.25);
+    transform: rotateY(180deg);
+  }
+  .fc-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px; font-family: 'JetBrains Mono', monospace;
+  }
+  .fc-text { font-size: 15px; line-height: 1.6; color: var(--text); }
+  .fc-answer { font-size: 14px; line-height: 1.6; color: var(--text); }
+  .fc-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 16px; gap: 12px;
+  }
+  .fc-progress {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted);
+    flex: 1; text-align: center;
+  }
+  .fc-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  /* ===== QUIZ ===== */
+  .quiz-q {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px; margin-bottom: 8px;
+  }
+  .quiz-q-text { font-size: 15px; font-weight: 600; margin-bottom: 18px; line-height: 1.5; }
+  .quiz-q-num { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace; text-transform: uppercase; margin-bottom: 8px; }
+  .quiz-opts { display: flex; flex-direction: column; gap: 8px; }
+  .quiz-opt {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 16px; cursor: pointer; font-size: 13px; text-align: left;
+    transition: all .15s; color: var(--text); display: flex; align-items: center; gap: 10px;
+  }
+  .quiz-opt:hover:not([disabled]) { background: var(--card-h); border-color: rgba(0,229,255,.3); }
+  .quiz-opt.correct { background: rgba(16,185,129,.12); border-color: var(--emerald); color: var(--emerald); }
+  .quiz-opt.wrong   { background: rgba(244,63,94,.10); border-color: var(--rose); color: var(--rose); }
+  .quiz-opt.reveal  { background: rgba(16,185,129,.07); border-color: rgba(16,185,129,.3); }
+  .quiz-opt[disabled] { cursor: default; }
+  .quiz-opt-letter {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--border);
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-family: 'JetBrains Mono', monospace;
+  }
+  .quiz-explanation {
+    margin-top: 10px; padding: 10px 14px; border-radius: 8px;
+    background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.15);
+    font-size: 12px; color: var(--text2); line-height: 1.6; display: none;
+  }
+  .quiz-score {
+    background: linear-gradient(135deg, rgba(0,229,255,.08), rgba(168,85,247,.08));
+    border: 1px solid rgba(0,229,255,.2); border-radius: 14px;
+    padding: 32px; text-align: center;
+  }
+  .quiz-score-num { font-size: 56px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+  .quiz-score-label { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+  /* ===== MODE PILLS ===== */
+  .mode-pills { display: flex; gap: 4px; background: var(--bg); border-radius: 10px;
+    padding: 4px; border: 1px solid var(--border); width: fit-content; }
+  .mode-pill {
+    padding: 7px 18px; border-radius: 7px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .2s; color: var(--text2); border: none; background: none;
+    font-family: 'Sora', sans-serif;
+  }
+  .mode-pill.active { background: var(--card-h); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+
+  /* ===== LEARN GUIDE SLIDE PANEL ===== */
+  .guide-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    z-index: 900; opacity: 0; pointer-events: none;
+    transition: opacity .3s ease;
+    backdrop-filter: blur(2px);
+  }
+  .guide-overlay.open { opacity: 1; pointer-events: all; }
+
+  .guide-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(580px, 100vw); background: var(--surface);
+    border-left: 1px solid var(--border);
+    z-index: 901; display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .35s cubic-bezier(.4,0,.2,1);
+    overflow: hidden;
+  }
+  .guide-panel.open { transform: translateX(0); }
+
+  .guide-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+    background: var(--card); flex-shrink: 0;
+  }
+  .guide-header-title {
+    font-size: 15px; font-weight: 700;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .guide-close {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 20px; padding: 4px 8px; border-radius: 6px; line-height: 1;
+    transition: color .15s;
+  }
+  .guide-close:hover { color: var(--text); }
+
+  .guide-body {
+    flex: 1; overflow-y: auto; padding: 28px 24px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .guide-body::-webkit-scrollbar { width: 5px; }
+  .guide-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .guide-section { display: flex; flex-direction: column; gap: 10px; }
+  .guide-section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); font-family: 'JetBrains Mono', monospace;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .guide-lead {
+    font-size: 14px; line-height: 1.75; color: var(--text2);
+  }
+  .guide-lead strong { color: var(--text); }
+
+  .guide-technique {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .guide-technique-header {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .guide-technique-icon { font-size: 18px; flex-shrink: 0; }
+  .guide-technique-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .guide-technique-desc { font-size: 12px; color: var(--text2); line-height: 1.65; }
+  .guide-technique-tip {
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: var(--cyan); background: rgba(0,229,255,.05);
+    border: 1px solid rgba(0,229,255,.12); border-radius: 6px;
+    padding: 6px 10px; margin-top: 4px;
+  }
+
+  .guide-table {
+    width: 100%; border-collapse: collapse; font-size: 12px;
+  }
+  .guide-table th {
+    text-align: left; padding: 7px 10px;
+    font-weight: 700; color: var(--muted); font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+  }
+  .guide-table td {
+    padding: 8px 10px; border-bottom: 1px solid rgba(42,42,58,.6);
+    color: var(--text2); vertical-align: middle;
+  }
+  .guide-table tr:last-child td { border-bottom: none; }
+  .guide-table td:first-child { color: var(--text); font-weight: 600; }
+  .stars { color: var(--amber); letter-spacing: 1px; font-size: 11px; }
+
+  .guide-why-box {
+    background: linear-gradient(135deg, rgba(0,229,255,.05), rgba(168,85,247,.05));
+    border: 1px solid rgba(168,85,247,.25); border-radius: 10px;
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .guide-why-title {
+    font-size: 12px; font-weight: 700; color: var(--violet);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .guide-why-body { font-size: 13px; line-height: 1.75; color: var(--text2); }
+  .guide-why-body strong { color: var(--text); }
+
+  .guide-flow {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .guide-flow-step {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+  }
+  .guide-flow-num {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    color: #000;
+  }
+  .guide-flow-text { font-size: 12px; line-height: 1.6; color: var(--text2); }
+  .guide-flow-text strong { color: var(--text); }
+
+  .guide-footer {
+    padding: 16px 24px; border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted); flex-shrink: 0;
+    background: var(--card); text-align: center; line-height: 1.6;
+  }
+  .hidden { display:none !important; }
+  .mt { margin-top:16px; }
+  .mb { margin-bottom:16px; }
+  .gap { display:flex; gap:8px; align-items:center; }
+
+  /* ===== QUALITY BADGE ===== */
+  .q-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:2px 8px; border-radius:4px;
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700;
+  }
+  .q-A { background:rgba(16,185,129,.15); color:var(--emerald); }
+  .q-B { background:rgba(0,229,255,.12); color:var(--cyan); }
+  .q-C { background:rgba(245,158,11,.12); color:var(--amber); }
+  .q-D { background:rgba(244,63,94,.12); color:var(--rose); }
+
+  /* ===== PLAN ITEMS ===== */
+  .plan-item {
+    display:flex; align-items:flex-start; gap:10px;
+    padding:10px 14px; border-radius:8px;
+    background:var(--bg); border:1px solid var(--border);
+    margin-bottom:6px; font-size:13px;
+  }
+  .plan-item .pi-title { font-weight:600; flex:1; }
+  .plan-item .pi-summary { font-size:11px; color:var(--text2); margin-top:2px; }
+  .plan-item.pi-skipped { opacity:.5; }
+
+  /* ===== PROGRESS BAR ===== */
+  .progress-bar-wrap {
+    background:var(--border); border-radius:4px; height:6px; margin:8px 0;
+  }
+  .progress-bar-fill {
+    background:linear-gradient(90deg,var(--cyan),var(--violet));
+    height:6px; border-radius:4px; transition:width .4s ease;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo"><span>My Brain</span></div>
+    <div class="header-status">
+      <span><span class="status-dot" id="dot-claude"></span> Claude CLI</span>
+      <span><span class="status-dot" id="dot-vault"></span> Vault</span>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="learn">⚡ Learn</button>
+    <button class="tab" data-tab="review">🧠 Review</button>
+    <button class="tab" data-tab="staging">📂 Staging</button>
+    <button class="tab" data-tab="vault">📊 Vault</button>
+    <button class="tab" data-tab="config">⚙ Config</button>
+  </div>
+
+  <!-- ═══════ LEARN PANEL ═══════ -->
+  <div class="panel active" id="panel-learn">
+
+    <!-- Mode toggle -->
+    <div style="display:flex; gap:8px; margin-bottom:24px; align-items:center;">
+      <button class="btn btn-primary" id="mode-full" onclick="setMode('full')" style="font-size:12px;">⚡ Full Pipeline</button>
+      <button class="btn btn-ghost" id="mode-direct" onclick="setMode('direct')" style="font-size:12px;">📥 Direct Ingest</button>
+      <span style="font-size:11px; color:var(--muted); margin-left:8px; flex:1;" id="mode-hint">Scan vault → Scout → NotebookLM → Vault</span>
+      <button class="btn btn-ghost" onclick="resetPipeline()" style="font-size:11px; padding:6px 12px; color:var(--rose); border-color:rgba(244,63,94,.3);">↺ Reset</button>
+    </div>
+
+    <div class="pipeline" id="pipeline-full">
+
+      <!-- Step 1: Topic -->
+      <div class="pipe-step active" id="step-topic">
+        <div class="step-header">
+          <div class="step-num s1">01</div>
+          <div>
+            <div class="step-title">What do you want to learn?</div>
+            <div class="step-subtitle">Claude scans your vault + finds gaps</div>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="gap">
+            <input type="text" id="topic-input" placeholder="e.g. quantum computing, Rust ownership, C# generics..." style="flex:1">
+            <button class="btn btn-primary" id="btn-analyze" onclick="analyze()">Analyze →</button>
+          </div>
+          <div class="log hidden" id="log-analyze"></div>
+        </div>
+      </div>
+
+      <div class="pipe-connector">↓</div>
+
+      <!-- Step 2: Scout -->
+      <div class="pipe-step waiting" id="step-scout">
+        <div class="step-header">
+          <div class="step-num s2">02</div>
+          <div>
+            <div class="step-title">Scout Resources</div>
+            <div class="step-subtitle">Claude finds YouTube, articles, papers, docs</div>
+          </div>
+        </div>
+        <div class="step-body hidden" id="scout-body">
+          <div id="gaps-list"></div>
+          <button class="btn btn-violet mt" id="btn-scout" onclick="scout()">🔍 Scout Resources</button>
+          <div class="log hidden" id="log-scout"></div>
+          <div id="resources-list" class="mt"></div>
+
+          <!-- User's own resources -->
+          <div class="mt" id="user-resources-section" style="border:1px solid var(--border); border-radius:10px; padding:16px; background:rgba(168,85,247,.03);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <span class="input-label" style="margin:0; color:var(--violet);">Add your own resources</span>
+              <span style="font-size:11px; color:var(--muted);">YouTube, articles, docs Claude missed</span>
+            </div>
+            <div id="user-resources-list"></div>
+            <div class="gap mt" style="gap:8px;">
+              <input type="text" id="user-resource-url" placeholder="https://..." style="flex:1; font-size:12px;">
+              <button class="btn btn-ghost" onclick="addUserResource()" style="padding:6px 12px; font-size:11px;">+ Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipe-connector">↓</div>
+
+      <!-- Step 3: NotebookLM -->
+      <div class="pipe-step waiting" id="step-prompt">
+        <div class="step-header">
+          <div class="step-num s3">03</div>
+          <div>
+            <div class="step-title">NotebookLM Research</div>
+            <div class="step-subtitle">Generate prompt → run NotebookLM → come back with the output</div>
+          </div>
+        </div>
+        <div class="step-body hidden" id="prompt-body">
+          <button class="btn btn-amber" id="btn-prompt" onclick="generatePrompt()">📋 Generate Prompt</button>
+
+          <!-- URLs block -->
+          <div class="hidden mt" id="urls-section">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span class="input-label" style="margin:0;">Step 1: Copy all URLs into NotebookLM</span>
+              <button class="btn btn-ghost" onclick="copyAllURLs()" style="padding:4px 12px; font-size:11px;" id="btn-copy-urls">📋 Copy All URLs</button>
+            </div>
+            <div class="log" id="urls-block" style="max-height:200px; white-space:pre-wrap; user-select:all; cursor:text;"></div>
+          </div>
+
+          <!-- Prompt block -->
+          <div class="hidden mt" id="prompt-section">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span class="input-label" style="margin:0;">Step 2: Copy this prompt into NotebookLM</span>
+              <button class="btn btn-ghost" onclick="copyPrompt()" style="padding:4px 12px; font-size:11px;" id="btn-copy-prompt">📋 Copy Prompt</button>
+            </div>
+            <div class="prompt-box" id="prompt-output" style="max-height:250px;"></div>
+          </div>
+
+          <div class="mt" style="font-size:13px; color:var(--text2);">
+            <strong style="color:var(--amber)">Now:</strong>
+            Open <a href="https://notebooklm.google.com" target="_blank" style="color:var(--cyan)">NotebookLM</a> →
+            Paste the URLs as sources → Paste the prompt → Let it research →
+            Drop the output below ↓
+          </div>
+        </div>
+      </div>
+
+      <div class="pipe-connector">↓</div>
+
+      <!-- Step 4: Stage + Ingest (combined) -->
+      <div class="pipe-step waiting" id="step-ingest">
+        <div class="step-header">
+          <div class="step-num s4">04</div>
+          <div>
+            <div class="step-title">Drop Research & Build Knowledge</div>
+            <div class="step-subtitle">Upload → Plan → Review → Write interlinked notes</div>
+          </div>
+        </div>
+        <div class="step-body hidden" id="ingest-body">
+
+          <!-- Inline drop zone -->
+          <div class="dropzone" id="dropzone-inline"
+               ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)"
+               onclick="document.getElementById('file-input-inline').click()">
+            <div class="dz-icon">📄</div>
+            <div class="dz-text">Drop NotebookLM output here or click to browse</div>
+            <div class="dz-sub">.md, .txt — multiple files supported</div>
+          </div>
+          <input type="file" id="file-input-inline" multiple accept=".md,.txt,.text,.html" style="display:none" onchange="uploadFiles(this.files)">
+
+          <!-- Paste area -->
+          <div class="mt">
+            <div class="input-label">Or paste text directly</div>
+            <textarea id="paste-area" placeholder="Paste NotebookLM output here..." style="margin-top:8px;"></textarea>
+            <div class="gap mt">
+              <input type="text" id="paste-name" placeholder="filename.md" style="max-width:200px">
+              <button class="btn btn-ghost" onclick="pasteToStaging()">💾 Save to Staging</button>
+            </div>
+          </div>
+
+          <!-- Staged files list -->
+          <div id="staged-files-inline" class="mt"></div>
+
+          <!-- Step 4a: Plan button -->
+          <div id="staging-status" class="mt" style="font-size:13px; color:var(--text2);"></div>
+          <button class="btn btn-amber mt" id="btn-plan" onclick="planNotes()" disabled>🗂 Plan Notes</button>
+          <div class="log hidden" id="log-plan"></div>
+
+          <!-- Step 4b: Plan review (shown after planning) -->
+          <div id="plan-review" class="hidden mt">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <span style="font-size:13px; font-weight:600; color:var(--text);">📋 Planned Notes — review before writing</span>
+              <span id="plan-count" style="font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace;"></span>
+            </div>
+            <div id="plan-list" style="margin-bottom:12px;"></div>
+            <button class="btn btn-emerald" id="btn-write" onclick="writeNotes()">🧠 Write These Notes</button>
+          </div>
+
+          <!-- Step 4c: SSE progress log -->
+          <div class="log hidden" id="log-ingest"></div>
+          <div id="ingest-results" class="hidden mt"></div>
+
+        </div>
+      </div>
+
+    </div> <!-- end pipeline-full -->
+
+    <!-- ═══════ DIRECT INGEST MODE ═══════ -->
+    <div id="pipeline-direct" class="hidden">
+      <div class="pipe-step active">
+        <div class="step-header">
+          <div class="step-num s5">📥</div>
+          <div>
+            <div class="step-title">Direct Ingest</div>
+            <div class="step-subtitle">Skip the pipeline — drop your own research and build knowledge directly</div>
+          </div>
+        </div>
+        <div class="step-body">
+
+          <!-- Topic for direct mode -->
+          <div class="input-group">
+            <label class="input-label">Topic Name</label>
+            <input type="text" id="direct-topic" placeholder="e.g. C# Generics, Docker Networking, React Hooks...">
+          </div>
+
+          <!-- Drop zone -->
+          <div class="dropzone mt" id="dropzone-direct"
+               ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)"
+               onclick="document.getElementById('file-input-direct').click()">
+            <div class="dz-icon">📄</div>
+            <div class="dz-text">Drop your research notes, articles, or any text files</div>
+            <div class="dz-sub">.md, .txt — multiple files supported</div>
+          </div>
+          <input type="file" id="file-input-direct" multiple accept=".md,.txt,.text,.html" style="display:none" onchange="uploadFiles(this.files)">
+
+          <!-- Paste area -->
+          <details class="mt" style="cursor:pointer;">
+            <summary style="font-size:13px; color:var(--text2);">Or paste text directly</summary>
+            <textarea id="direct-paste-area" placeholder="Paste your research notes here..." style="margin-top:8px;"></textarea>
+            <div class="gap mt">
+              <input type="text" id="direct-paste-name" placeholder="filename.md" style="max-width:200px">
+              <button class="btn btn-ghost" onclick="directPasteToStaging()">Save</button>
+            </div>
+          </details>
+
+          <!-- Staged files -->
+          <div id="direct-staged-files" class="mt"></div>
+
+          <!-- Process button -->
+          <div id="direct-staging-status" class="mt" style="font-size:13px; color:var(--text2);"></div>
+          <button class="btn btn-emerald mt" id="btn-direct-ingest" onclick="directIngest()" disabled>🧠 Process & Write Notes</button>
+          <div class="log hidden" id="log-direct-ingest"></div>
+          <div id="direct-ingest-results" class="hidden mt"></div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══════ REVIEW PANEL ═══════ -->
+  <div class="panel" id="panel-review">
+
+    <!-- Topic selector row -->
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+      <select id="review-topic-select" style="flex:1; min-width:200px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-family:'Sora',sans-serif; font-size:13px;">
+        <option value="">— Select a topic —</option>
+      </select>
+      <button class="btn btn-ghost" onclick="loadReviewTopics()" style="font-size:12px;">↺ Refresh</button>
+      <span id="review-topic-info" style="font-size:12px; color:var(--muted);"></span>
+    </div>
+
+    <!-- Mode pills: Generate / Flashcards / Quiz -->
+    <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+      <div class="mode-pills">
+        <button class="mode-pill active" id="rpill-generate" onclick="setReviewMode('generate')">⚙ Generate</button>
+        <button class="mode-pill" id="rpill-flashcards" onclick="setReviewMode('flashcards')">🃏 Flashcards</button>
+        <button class="mode-pill" id="rpill-quiz" onclick="setReviewMode('quiz')">🎯 Quiz</button>
+      </div>
+      <span id="review-mode-hint" style="font-size:12px; color:var(--muted);">Build learning materials from your vault</span>
+      <button class="btn btn-ghost" onclick="openGuide()" style="margin-left:auto; font-size:12px; color:var(--violet); border-color:rgba(168,85,247,.35); white-space:nowrap;">💡 How to Learn</button>
+    </div>
+
+    <!-- ── GENERATE SECTION ── -->
+    <div id="rsection-generate">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+        <div class="card" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-title"><span class="icon">🃏</span> Flashcards</div>
+          <div class="card-desc">15–25 active recall Q&amp;A cards in Obsidian Spaced Repetition format. Generated exclusively from your validated notes — zero noise.</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--cyan); background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.12); border-radius:6px; padding:7px 10px;">05 - Learning / [Topic] Flashcards.md</div>
+          <button class="btn btn-primary" id="btn-gen-flashcards" onclick="generateFlashcards()">🃏 Generate Flashcards</button>
+          <div class="log hidden" id="log-gen-flashcards"></div>
+        </div>
+
+        <div class="card" style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-title"><span class="icon">🗺</span> Mind Map</div>
+          <div class="card-desc">Obsidian Canvas showing all topic notes as nodes with wikilink connections as edges. Instant — no Claude call needed.</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--violet); background:rgba(168,85,247,.05); border:1px solid rgba(168,85,247,.12); border-radius:6px; padding:7px 10px;">05 - Learning / [Topic] Mind Map.canvas</div>
+          <button class="btn btn-ghost" id="btn-gen-canvas" onclick="generateCanvas()" style="border-color:rgba(168,85,247,.4); color:var(--violet);">🗺 Generate Mind Map</button>
+          <div class="log hidden" id="log-gen-canvas"></div>
+        </div>
+
+      </div>
+
+      <div class="card mt" style="background:rgba(245,158,11,.03); border-color:rgba(245,158,11,.18);">
+        <span style="font-size:12px; font-weight:600; color:var(--amber);">💡 Spaced Repetition Plugin</span>
+        <span style="font-size:12px; color:var(--text2); margin-left:8px;">Install <a href="https://obsidian.md/plugins?id=obsidian-spaced-repetition" target="_blank" style="color:var(--cyan)">Spaced Repetition</a> in Obsidian to review flashcards with a scientifically-optimised schedule directly in your vault.</span>
+      </div>
+    </div>
+
+    <!-- ── FLASHCARD PLAYER ── -->
+    <div id="rsection-flashcards" class="hidden">
+      <div id="fc-setup">
+        <div class="card" style="text-align:center; padding:32px;">
+          <div style="font-size:32px; margin-bottom:12px;">🃏</div>
+          <div style="font-size:15px; font-weight:600; margin-bottom:6px;">Ready to review?</div>
+          <div style="font-size:13px; color:var(--text2); margin-bottom:20px;">Loads flashcards for the selected topic from <code style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--cyan);">05 - Learning/</code></div>
+          <button class="btn btn-primary" id="btn-load-flashcards" onclick="loadFlashcards()">Start Review →</button>
+          <div class="log hidden mt" id="log-load-flashcards"></div>
+        </div>
+      </div>
+
+      <div id="fc-player" class="hidden">
+        <!-- Progress bar -->
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+          <div style="flex:1; background:var(--border); border-radius:4px; height:5px;">
+            <div id="fc-progress-bar" style="background:linear-gradient(90deg,var(--cyan),var(--violet)); height:5px; border-radius:4px; transition:width .3s ease; width:0%;"></div>
+          </div>
+          <span id="fc-counter" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap;"></span>
+        </div>
+
+        <!-- Flip card -->
+        <div class="fc-scene" onclick="flipCard()">
+          <div class="fc-card" id="fc-card">
+            <div class="fc-face fc-front">
+              <div class="fc-label">Question</div>
+              <div class="fc-text" id="fc-question"></div>
+            </div>
+            <div class="fc-face fc-back">
+              <div class="fc-label">Answer</div>
+              <div class="fc-answer" id="fc-answer"></div>
+            </div>
+          </div>
+        </div>
+        <div class="fc-hint" id="fc-hint">Click card to reveal answer</div>
+
+        <!-- Nav buttons -->
+        <div class="fc-nav" style="margin-top:16px;">
+          <button class="btn btn-ghost" onclick="prevCard()" id="btn-fc-prev" style="font-size:12px;">← Prev</button>
+          <div style="display:flex; gap:8px;" id="fc-rate-btns" class="hidden">
+            <button class="btn btn-ghost" onclick="rateCard('again')" style="font-size:12px; color:var(--rose); border-color:rgba(244,63,94,.3);">✗ Again</button>
+            <button class="btn btn-ghost" onclick="rateCard('good')" style="font-size:12px; color:var(--emerald); border-color:rgba(16,185,129,.3);">✓ Got it</button>
+          </div>
+          <button class="btn btn-ghost" onclick="nextCard()" id="btn-fc-next" style="font-size:12px;">Next →</button>
+        </div>
+
+        <!-- Session summary (shown at end) -->
+        <div id="fc-summary" class="hidden" style="text-align:center; padding:32px 0;">
+          <div style="font-size:40px; margin-bottom:12px;">🎉</div>
+          <div style="font-size:18px; font-weight:700; margin-bottom:6px;">Session Complete!</div>
+          <div id="fc-summary-stats" style="font-size:13px; color:var(--text2); margin-bottom:20px;"></div>
+          <button class="btn btn-primary" onclick="restartFlashcards()">↺ Review Again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── QUIZ SECTION ── -->
+    <div id="rsection-quiz" class="hidden">
+      <div id="quiz-setup">
+        <div class="card" style="text-align:center; padding:32px;">
+          <div style="font-size:32px; margin-bottom:12px;">🎯</div>
+          <div style="font-size:15px; font-weight:600; margin-bottom:6px;">Test your knowledge</div>
+          <div style="font-size:13px; color:var(--text2); margin-bottom:20px;">10 multiple-choice questions generated from your validated vault notes</div>
+          <button class="btn btn-primary" id="btn-start-quiz" onclick="startQuiz()">Generate Quiz →</button>
+          <div class="log hidden mt" id="log-quiz-gen"></div>
+        </div>
+      </div>
+
+      <div id="quiz-player" class="hidden">
+        <!-- Quiz header -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+          <div style="font-size:14px; font-weight:600;" id="quiz-title"></div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span id="quiz-answered-count" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);"></span>
+            <button class="btn btn-ghost" onclick="submitQuiz()" id="btn-submit-quiz" style="font-size:12px; color:var(--emerald); border-color:rgba(16,185,129,.3);" disabled>Submit →</button>
+          </div>
+        </div>
+        <div id="quiz-questions"></div>
+      </div>
+
+      <div id="quiz-results" class="hidden">
+        <div class="quiz-score">
+          <div class="quiz-score-num" id="quiz-score-num" style="color:var(--cyan);"></div>
+          <div class="quiz-score-label" id="quiz-score-label"></div>
+          <div style="margin-top:24px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+            <button class="btn btn-ghost" onclick="showQuizReview()" style="font-size:12px;">📋 Review Answers</button>
+            <button class="btn btn-primary" onclick="startQuiz()" style="font-size:12px;">↺ New Quiz</button>
+          </div>
+        </div>
+        <div id="quiz-review-answers" class="hidden mt"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════ STAGING PANEL ═══════ -->
+  <div class="panel" id="panel-staging">
+    <h2 style="font-size:20px; font-weight:700; margin-bottom:20px;">📂 Staging Folder</h2>
+    <p style="color:var(--text2); font-size:13px; margin-bottom:20px;">
+      Files waiting to be processed. Upload via the Learn tab (Step 4), or drop files directly into
+      your vault's <code style="font-family:'JetBrains Mono',monospace; font-size:11px; background:rgba(0,229,255,.08); color:var(--cyan); padding:2px 6px; border-radius:3px;">04 - Staging/</code> folder.
+    </p>
+
+    <div id="staging-folder-path" style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:16px;"></div>
+
+    <h3 style="font-size:14px; font-weight:600; margin:0 0 12px;">Files in Staging</h3>
+    <div id="staging-files">
+      <div style="color:var(--muted); font-size:13px;">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ═══════ VAULT PANEL ═══════ -->
+  <div class="panel" id="panel-vault">
+    <h2 style="font-size:20px; font-weight:700; margin-bottom:20px;">📊 Vault Overview</h2>
+    <div class="result-grid" id="vault-stats">
+      <div class="result-card"><div class="rc-title">Total Notes</div><div class="rc-val cyan" id="stat-total">—</div></div>
+      <div class="result-card"><div class="rc-title">AI Generated</div><div class="rc-val violet" id="stat-ai">—</div></div>
+      <div class="result-card"><div class="rc-title">Needs Review</div><div class="rc-val amber" id="stat-review">—</div></div>
+      <div class="result-card"><div class="rc-title">Validated</div><div class="rc-val emerald" id="stat-validated">—</div></div>
+    </div>
+
+    <h3 style="font-size:14px; font-weight:600; margin:24px 0 12px;">📑 Vault Index</h3>
+    <p style="color:var(--text2); font-size:12px; margin-bottom:12px;">Master index of all notes — used to prevent duplicates and build links between topics.</p>
+    <div class="gap" style="align-items:center;">
+      <button class="btn btn-ghost" onclick="rebuildIndex()" id="btn-rebuild-index" style="font-size:12px;">🔄 Rebuild Index</button>
+      <span id="index-status" style="font-size:12px; color:var(--muted);"></span>
+    </div>
+
+    <h3 style="font-size:14px; font-weight:600; margin:24px 0 12px;">Notes Needing Review</h3>
+    <div id="review-list">
+      <div style="color:var(--muted); font-size:13px;">Loading...</div>
+    </div>
+
+    <h3 style="font-size:14px; font-weight:600; margin:24px 0 12px;">🧹 Cleanup</h3>
+    <p style="color:var(--text2); font-size:12px; margin-bottom:12px;">Find and remove corrupted notes (rate limit messages, empty content, etc.)</p>
+    <div class="gap">
+      <button class="btn btn-ghost" onclick="scanGarbage()" id="btn-scan-garbage" style="font-size:12px;">🔍 Scan for bad notes</button>
+      <button class="btn btn-ghost hidden" onclick="removeGarbage()" id="btn-remove-garbage" style="font-size:12px; color:var(--rose); border-color:rgba(244,63,94,.3);">🗑 Remove found</button>
+    </div>
+    <div id="garbage-list" class="mt"></div>
+  </div>
+
+  <!-- ═══════ CONFIG PANEL ═══════ -->
+  <div class="panel" id="panel-config">
+    <h2 style="font-size:20px; font-weight:700; margin-bottom:20px;">⚙ Configuration</h2>
+    <div class="config-grid" id="config-form">
+      <div class="input-group">
+        <label class="input-label">Vault Path</label>
+        <input type="text" id="cfg-vault_path" placeholder="~/Documents/MyBrain">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Inbox Folder</label>
+        <input type="text" id="cfg-notes_folder" placeholder="00 - Inbox">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Knowledge Folder</label>
+        <input type="text" id="cfg-knowledge_folder" placeholder="01 - Knowledge">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Resources Folder</label>
+        <input type="text" id="cfg-resources_folder" placeholder="02 - Resources">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Staging Folder</label>
+        <input type="text" id="cfg-staging_folder" placeholder="04 - Staging">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Prompts Folder</label>
+        <input type="text" id="cfg-prompts_folder" placeholder="03 - NotebookLM Prompts">
+      </div>
+    </div>
+    <div class="input-group mt">
+      <label class="input-label">Default Tags (comma separated)</label>
+      <input type="text" id="cfg-tags" placeholder="ai-generated, needs-review">
+    </div>
+    <button class="btn btn-primary mt" onclick="saveConfig()">💾 Save Configuration</button>
+    <div id="config-status" class="mt" style="font-size:13px;"></div>
+  </div>
+
+  <!-- ═══════ LEARN GUIDE SLIDE PANEL ═══════ -->
+  <div class="guide-overlay" id="guide-overlay" onclick="closeGuide()"></div>
+  <div class="guide-panel" id="guide-panel">
+
+    <div class="guide-header">
+      <span class="guide-header-title">💡 How to Actually Remember What You Learn</span>
+      <button class="guide-close" onclick="closeGuide()">×</button>
+    </div>
+
+    <div class="guide-body">
+
+      <!-- WHY THIS IS HERE -->
+      <div class="guide-section">
+        <div class="guide-section-title">Why this lives here — not in NotebookLM</div>
+        <div class="guide-why-box">
+          <div class="guide-why-title">🧠 Your vault is your single source of truth</div>
+          <div class="guide-why-body">
+            NotebookLM generates quizzes and flashcards from <strong>raw, scattered sources</strong> — 
+            PDFs, articles, YouTube transcripts. The output is only as clean as the input.<br><br>
+            My Brain first <strong>distills</strong> all of that into validated, deduplicated, interlinked notes 
+            in <code style="font-family:'JetBrains Mono',monospace; font-size:11px; background:rgba(168,85,247,.1); color:var(--violet); padding:1px 5px; border-radius:3px;">01 - Knowledge/</code>. 
+            When you generate flashcards or a quiz here, they're built from <strong>that clean foundation</strong> — 
+            no contradictions, no noise, no repeated concepts from five different sources saying the same thing differently.<br><br>
+            The result: review materials that are <strong>accurate, stable, and consistent</strong> with exactly what you've validated and chosen to keep.
+          </div>
+        </div>
+      </div>
+
+      <!-- THE SCIENCE -->
+      <div class="guide-section">
+        <div class="guide-section-title">The science — ranked by evidence</div>
+        <div class="guide-lead">
+          Decades of cognitive science agree: most people study in the <strong>least effective way possible</strong>. 
+          Re-reading notes feels productive but barely moves the needle. 
+          Here's what actually works, ranked by long-term retention power.
+        </div>
+
+        <div class="guide-technique">
+          <div class="guide-technique-header">
+            <span class="guide-technique-icon">⚡</span>
+            <span class="guide-technique-name">1. Active Recall — the king</span>
+          </div>
+          <div class="guide-technique-desc">Force yourself to retrieve information from memory <em>without looking at your notes</em>. 
+          The act of struggling to remember is what builds the memory trace — not the looking up.</div>
+          <div class="guide-technique-tip">→ This is exactly what flashcards do. Close the answer, think hard, then flip.</div>
+        </div>
+
+        <div class="guide-technique">
+          <div class="guide-technique-header">
+            <span class="guide-technique-icon">📅</span>
+            <span class="guide-technique-name">2. Spaced Repetition — the multiplier</span>
+          </div>
+          <div class="guide-technique-desc">Review the same material at increasing intervals: today → tomorrow → 3 days → 1 week → 2 weeks → 1 month. 
+          Each review right before you'd forget re-anchors it for longer. Combined with active recall, this is the closest thing to a cheat code for long-term memory.</div>
+          <div class="guide-technique-tip">→ Install the Obsidian Spaced Repetition plugin — your flashcard files are already formatted for it.</div>
+        </div>
+
+        <div class="guide-technique">
+          <div class="guide-technique-header">
+            <span class="guide-technique-icon">🗣</span>
+            <span class="guide-technique-name">3. Feynman Technique — for deep understanding</span>
+          </div>
+          <div class="guide-technique-desc">Explain the concept out loud as if teaching it to someone who's never heard of it. 
+          When you hit jargon, hand-waves, or gaps — that's exactly where your understanding breaks down. Go fix those spots.</div>
+          <div class="guide-technique-tip">→ After a flashcard session, pick the 3 cards you found hardest and explain them out loud.</div>
+        </div>
+
+        <div class="guide-technique">
+          <div class="guide-technique-header">
+            <span class="guide-technique-icon">🔀</span>
+            <span class="guide-technique-name">4. Interleaving — mix it up</span>
+          </div>
+          <div class="guide-technique-desc">Don't study one topic in one block. Mix different topics or subtopics in a single session. 
+          It feels harder and more confusing — that difficulty is the learning. It forces your brain to discriminate between concepts and strengthens transfer.</div>
+          <div class="guide-technique-tip">→ Generate quizzes across multiple topics in one sitting instead of one topic per day.</div>
+        </div>
+      </div>
+
+      <!-- RETENTION TABLE -->
+      <div class="guide-section">
+        <div class="guide-section-title">Retention power after ~1 month</div>
+        <table class="guide-table">
+          <thead>
+            <tr>
+              <th>Technique</th>
+              <th>Retention</th>
+              <th>Feels like</th>
+              <th>Best for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Active Recall</td>
+              <td><span class="stars">★★★★★</span></td>
+              <td style="color:var(--rose)">Hard</td>
+              <td>Everything</td>
+            </tr>
+            <tr>
+              <td>Spaced Repetition</td>
+              <td><span class="stars">★★★★★</span></td>
+              <td style="color:var(--amber)">Algorithmic</td>
+              <td>Facts + concepts</td>
+            </tr>
+            <tr>
+              <td>Feynman / Explain it</td>
+              <td><span class="stars">★★★★</span></td>
+              <td style="color:var(--amber)">Uncomfortable</td>
+              <td>Deep understanding</td>
+            </tr>
+            <tr>
+              <td>Interleaving</td>
+              <td><span class="stars">★★★★</span></td>
+              <td style="color:var(--amber)">Confusing at first</td>
+              <td>Skills + categories</td>
+            </tr>
+            <tr>
+              <td>Re-reading notes</td>
+              <td><span class="stars">★☆☆☆☆</span></td>
+              <td style="color:var(--emerald)">Easy, comfortable</td>
+              <td>Short-term cramming</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RECOMMENDED FLOW -->
+      <div class="guide-section">
+        <div class="guide-section-title">Recommended flow in My Brain</div>
+        <div class="guide-flow">
+          <div class="guide-flow-step">
+            <div class="guide-flow-num">1</div>
+            <div class="guide-flow-text"><strong>Learn a topic</strong> — use the Learn tab to run the full pipeline. NotebookLM researches, you validate and move notes to Knowledge.</div>
+          </div>
+          <div class="guide-flow-step">
+            <div class="guide-flow-num">2</div>
+            <div class="guide-flow-text"><strong>Generate materials</strong> — come here, select the topic, generate Flashcards + Mind Map. Takes 30–60 seconds.</div>
+          </div>
+          <div class="guide-flow-step">
+            <div class="guide-flow-num">3</div>
+            <div class="guide-flow-text"><strong>Same day</strong> — do a full flashcard session. Don't skip this — first review within 24 hours is the most important.</div>
+          </div>
+          <div class="guide-flow-step">
+            <div class="guide-flow-num">4</div>
+            <div class="guide-flow-text"><strong>Day 3, Day 7, Day 14</strong> — run the Quiz to test yourself under pressure. Check the Mind Map to see connections you may have missed.</div>
+          </div>
+          <div class="guide-flow-step">
+            <div class="guide-flow-num">5</div>
+            <div class="guide-flow-text"><strong>Monthly</strong> — a quick flashcard pass keeps it in long-term memory indefinitely. The Obsidian Spaced Repetition plugin automates this scheduling for you.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM LINE -->
+      <div class="guide-section">
+        <div class="guide-section-title">Bottom line</div>
+        <div class="guide-lead">
+          If you only do one thing: <strong>after every flashcard session, pick the 3 hardest cards and explain them out loud</strong> 
+          as if teaching someone. You'll immediately know which gaps to revisit in your vault.
+          That single habit — active recall + immediate Feynman check — will put your retention in the top 5% of learners.
+        </div>
+      </div>
+
+    </div><!-- end guide-body -->
+
+    <div class="guide-footer">
+      Based on cognitive science research through 2025 · Active recall + spaced repetition = the evidence-based core combo
+    </div>
+
+  </div><!-- end guide-panel -->
+
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let currentTopic = '';
+
+// ═══════════════════════════════════════════
+// MODE SWITCHING & RESET
+// ═══════════════════════════════════════════
+let currentMode = 'full';
+
+function resetPipeline() {
+  currentTopic = '';
+
+  // Reset only FULL pipeline steps (not direct ingest)
+  document.querySelectorAll('#pipeline-full .pipe-step').forEach(s => {
+    s.classList.remove('done', 'active', 'waiting');
+    s.classList.add('waiting');
+    // Re-hide step bodies
+    const body = s.querySelector('.step-body');
+    if (body && s.id !== 'step-topic') body.classList.add('hidden');
+  });
+
+  // Reactivate step 1
+  const step1 = document.getElementById('step-topic');
+  step1.classList.remove('waiting');
+  step1.classList.add('active');
+  // Step 1 body should always be visible
+  const step1Body = step1.querySelector('.step-body');
+  if (step1Body) step1Body.classList.remove('hidden');
+
+  // Clear inputs
+  document.getElementById('topic-input').value = '';
+
+  // Clear logs
+  ['log-analyze', 'log-scout', 'log-ingest'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
+  });
+
+  // Clear dynamic content
+  const gapsList = document.getElementById('gaps-list');
+  if (gapsList) gapsList.innerHTML = '';
+  const resourcesList = document.getElementById('resources-list');
+  if (resourcesList) resourcesList.innerHTML = '';
+  const urlsSec = document.getElementById('urls-section');
+  if (urlsSec) urlsSec.classList.add('hidden');
+  const promptSec = document.getElementById('prompt-section');
+  if (promptSec) promptSec.classList.add('hidden');
+  const promptOutput = document.getElementById('prompt-output');
+  if (promptOutput) promptOutput.textContent = '';
+  const stagedInline = document.getElementById('staged-files-inline');
+  if (stagedInline) stagedInline.innerHTML = '';
+  const ingestResults = document.getElementById('ingest-results');
+  if (ingestResults) { ingestResults.innerHTML = ''; ingestResults.classList.add('hidden'); }
+  const stagingStatus = document.getElementById('staging-status');
+  if (stagingStatus) stagingStatus.innerHTML = '';
+
+  // Reset plan review
+  currentPlan = null;
+  const planReview = document.getElementById('plan-review');
+  if (planReview) planReview.classList.add('hidden');
+  const planList = document.getElementById('plan-list');
+  if (planList) planList.innerHTML = '';
+  const logPlan = document.getElementById('log-plan');
+  if (logPlan) { logPlan.innerHTML = ''; logPlan.classList.add('hidden'); }
+
+  // Reset direct ingest panel content (but don't touch its visibility)
+  const directTopic = document.getElementById('direct-topic');
+  if (directTopic) directTopic.value = '';
+  const directStaged = document.getElementById('direct-staged-files');
+  if (directStaged) directStaged.innerHTML = '';
+  const directLog = document.getElementById('log-direct-ingest');
+  if (directLog) { directLog.innerHTML = ''; directLog.classList.add('hidden'); }
+  const directResults = document.getElementById('direct-ingest-results');
+  if (directResults) { directResults.innerHTML = ''; directResults.classList.add('hidden'); }
+  const directStatus = document.getElementById('direct-staging-status');
+  if (directStatus) directStatus.innerHTML = '';
+
+  generatedURLs = '';
+  generatedPromptText = '';
+  userResources = [];
+  const userResList = document.getElementById('user-resources-list');
+  if (userResList) userResList.innerHTML = '';
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  const full = document.getElementById('pipeline-full');
+  const direct = document.getElementById('pipeline-direct');
+  const btnFull = document.getElementById('mode-full');
+  const btnDirect = document.getElementById('mode-direct');
+  const hint = document.getElementById('mode-hint');
+
+  if (mode === 'full') {
+    full.classList.remove('hidden');
+    direct.classList.add('hidden');
+    btnFull.className = 'btn btn-primary';
+    btnFull.style.fontSize = '12px';
+    btnDirect.className = 'btn btn-ghost';
+    btnDirect.style.fontSize = '12px';
+    hint.textContent = 'Scan vault → Scout → NotebookLM → Vault';
+  } else {
+    full.classList.add('hidden');
+    direct.classList.remove('hidden');
+    btnFull.className = 'btn btn-ghost';
+    btnFull.style.fontSize = '12px';
+    btnDirect.className = 'btn btn-primary';
+    btnDirect.style.fontSize = '12px';
+    hint.textContent = 'Drop existing research → Claude processes → Vault';
+    refreshStaging();
+  }
+}
+
+// ═══════════════════════════════════════════
+// DIRECT INGEST
+// ═══════════════════════════════════════════
+async function directPasteToStaging() {
+  const text = document.getElementById('direct-paste-area').value.trim();
+  if (!text) return;
+  const name = document.getElementById('direct-paste-name').value.trim() || `paste_${Date.now()}.md`;
+  await api('staging/paste', { method: 'POST', body: { text, name } });
+  document.getElementById('direct-paste-area').value = '';
+  document.getElementById('direct-paste-name').value = '';
+  await refreshStaging();
+}
+
+async function directIngest() {
+  const topic = document.getElementById('direct-topic').value.trim();
+  if (!topic) {
+    document.getElementById('direct-topic').style.borderColor = 'var(--rose)';
+    document.getElementById('direct-topic').focus();
+    setTimeout(() => document.getElementById('direct-topic').style.borderColor = '', 2000);
+    return;
+  }
+
+  currentTopic = topic;
+  clearLog('log-direct-ingest');
+  setLoading('btn-direct-ingest', true);
+  log('log-direct-ingest', `→ Processing research for "${topic}"...`, 'info');
+  log('log-direct-ingest', '  Planning note structure...', '');
+
+  const data = await api('ingest', { method: 'POST', body: { topic } });
+
+  if (data.error) {
+    log('log-direct-ingest', `✗ ${data.error}`, 'err');
+    setLoading('btn-direct-ingest', false);
+    return;
+  }
+
+  log('log-direct-ingest', `✓ Wrote ${data.written} notes!`, 'ok');
+  if (data.errors && data.errors.length > 0) {
+    data.errors.forEach(e => log('log-direct-ingest', `  ⚠ ${e.title}: ${e.error}`, 'warn'));
+  }
+
+  const results = document.getElementById('direct-ingest-results');
+  results.classList.remove('hidden');
+  let html = '<div class="result-grid">';
+  html += `<div class="result-card"><div class="rc-title">Notes Written</div><div class="rc-val emerald">${data.written}</div></div>`;
+  html += `<div class="result-card"><div class="rc-title">MOC</div><div class="rc-val cyan">✓</div></div>`;
+  html += '</div>';
+
+  if (data.notes && data.notes.length) {
+    html += '<div style="margin-top:16px">';
+    data.notes.forEach(n => {
+      html += `<div class="note-item"><span class="ni-icon">📝</span> ${n.title} <span class="ni-path">${n.file}</span></div>`;
+    });
+    html += '</div>';
+  }
+  results.innerHTML = html;
+
+  setLoading('btn-direct-ingest', false);
+  await refreshStaging();
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+
+    // Refresh data when switching tabs
+    if (tab.dataset.tab === 'staging') refreshStaging();
+    if (tab.dataset.tab === 'vault') refreshVault();
+    if (tab.dataset.tab === 'config') loadConfig();
+    if (tab.dataset.tab === 'review') loadReviewTopics();
+  });
+});
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+async function api(path, opts = {}) {
+  const r = await fetch('/api/' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+    ...(opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)
+      ? { body: JSON.stringify(opts.body) } : {}),
+  });
+  return r.json();
+}
+
+function log(id, msg, type = '') {
+  const el = document.getElementById(id);
+  el.classList.remove('hidden');
+  el.innerHTML += `<div class="${type}">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLog(id) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  el.classList.add('hidden');
+}
+
+function activateStep(stepId) {
+  // Only affect steps within the full pipeline
+  document.querySelectorAll('#pipeline-full .pipe-step').forEach(s => {
+    s.classList.remove('active');
+    if (!s.classList.contains('done')) s.classList.add('waiting');
+  });
+  const step = document.getElementById(stepId);
+  step.classList.remove('waiting');
+  step.classList.add('active');
+  const body = step.querySelector('.step-body');
+  if (body) body.classList.remove('hidden');
+}
+
+function markDone(stepId) {
+  const step = document.getElementById(stepId);
+  step.classList.remove('active', 'waiting');
+  step.classList.add('done');
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (loading) {
+    btn.disabled = true;
+    btn._text = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> Working...';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btn._text || btn.innerHTML;
+  }
+}
+
+
+// ═══════════════════════════════════════════
+// REVIEW TAB — state
+// ═══════════════════════════════════════════
+let reviewMode = 'generate';
+let fcCards = [], fcIndex = 0, fcFlipped = false, fcAgain = [], fcGood = [];
+let quizData = [], quizUserAnswers = {}, quizSubmitted = false;
+
+// ── Mode switching ──
+function setReviewMode(mode) {
+  reviewMode = mode;
+  ['generate','flashcards','quiz'].forEach(m => {
+    document.getElementById('rsection-' + m).classList.toggle('hidden', m !== mode);
+    document.getElementById('rpill-' + m).classList.toggle('active', m === mode);
+  });
+  const hints = {
+    generate: 'Build learning materials from your vault',
+    flashcards: 'Flip cards to test your memory',
+    quiz: '10 multiple-choice questions from your notes',
+  };
+  document.getElementById('review-mode-hint').textContent = hints[mode];
+}
+
+// ── Topic loader ──
+async function loadReviewTopics() {
+  const select = document.getElementById('review-topic-select');
+  const info = document.getElementById('review-topic-info');
+  select.innerHTML = '<option value="">— Loading... —</option>';
+  const data = await api('learn/topics');
+  if (data.error || !data.topics || !data.topics.length) {
+    select.innerHTML = '<option value="">— No validated notes in 01 - Knowledge —</option>';
+    info.textContent = 'Move notes from Inbox to Knowledge first.';
+    return;
+  }
+  select.innerHTML = '<option value="">— Select a topic —</option>';
+  data.topics.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.name;
+    o.textContent = t.name + ' (' + t.note_count + ' note' + (t.note_count !== 1 ? 's' : '') + ')';
+    select.appendChild(o);
+  });
+  select.onchange = () => {
+    const t = data.topics.find(x => x.name === select.value);
+    info.textContent = t ? '✓ ' + t.notes.map(n => n.title).join(', ') : '';
+  };
+}
+
+// ── GENERATE ──
+async function generateFlashcards() {
+  const topic = document.getElementById('review-topic-select').value;
+  if (!topic) { alert('Select a topic first.'); return; }
+  clearLog('log-gen-flashcards');
+  setLoading('btn-gen-flashcards', true);
+  log('log-gen-flashcards', '→ Generating flashcards for "' + topic + '"...', 'info');
+  const data = await api('learn/flashcards', { method: 'POST', body: { topic } });
+  setLoading('btn-gen-flashcards', false);
+  if (data.error) { log('log-gen-flashcards', '✗ ' + data.error, 'err'); return; }
+  log('log-gen-flashcards', '✓ ' + data.card_count + ' cards from ' + data.notes_used + ' notes → ' + data.file, 'ok');
+}
+
+async function generateCanvas() {
+  const topic = document.getElementById('review-topic-select').value;
+  if (!topic) { alert('Select a topic first.'); return; }
+  clearLog('log-gen-canvas');
+  setLoading('btn-gen-canvas', true);
+  log('log-gen-canvas', '→ Building mind map for "' + topic + '"...', 'info');
+  const data = await api('learn/canvas', { method: 'POST', body: { topic } });
+  setLoading('btn-gen-canvas', false);
+  if (data.error) { log('log-gen-canvas', '✗ ' + data.error, 'err'); return; }
+  log('log-gen-canvas', '✓ ' + data.node_count + ' nodes, ' + data.edge_count + ' edges → ' + data.file, 'ok');
+}
+
+// ═══════════════════════════════════════════
+// FLASHCARD PLAYER
+// ═══════════════════════════════════════════
+async function loadFlashcards() {
+  const topic = document.getElementById('review-topic-select').value;
+  if (!topic) { alert('Select a topic first.'); return; }
+  clearLog('log-load-flashcards');
+  setLoading('btn-load-flashcards', true);
+  log('log-load-flashcards', '→ Loading flashcards for "' + topic + '"...', 'info');
+  const data = await api('learn/flashcards/load', { method: 'POST', body: { topic } });
+  setLoading('btn-load-flashcards', false);
+  if (data.error) { log('log-load-flashcards', '✗ ' + data.error, 'err'); return; }
+  if (!data.cards || !data.cards.length) { log('log-load-flashcards', '✗ No cards found.', 'err'); return; }
+  fcCards = shuffleArray(data.cards);
+  fcIndex = 0; fcFlipped = false; fcAgain = []; fcGood = [];
+  document.getElementById('fc-setup').classList.add('hidden');
+  document.getElementById('fc-player').classList.remove('hidden');
+  document.getElementById('fc-summary').classList.add('hidden');
+  renderCard();
+}
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function renderCard() {
+  if (fcIndex >= fcCards.length) { showFcSummary(); return; }
+  const card = fcCards[fcIndex];
+  document.getElementById('fc-question').textContent = card.question;
+  document.getElementById('fc-answer').textContent = card.answer;
+  // Reset flip
+  fcFlipped = false;
+  const el = document.getElementById('fc-card');
+  el.classList.remove('flipped');
+  document.getElementById('fc-hint').textContent = 'Click card to reveal answer';
+  document.getElementById('fc-rate-btns').classList.add('hidden');
+  // Progress
+  const pct = (fcIndex / fcCards.length * 100).toFixed(0);
+  document.getElementById('fc-progress-bar').style.width = pct + '%';
+  document.getElementById('fc-counter').textContent = (fcIndex + 1) + ' / ' + fcCards.length;
+  // Nav
+  document.getElementById('btn-fc-prev').disabled = fcIndex === 0;
+}
+
+function flipCard() {
+  if (fcIndex >= fcCards.length) return;
+  fcFlipped = !fcFlipped;
+  document.getElementById('fc-card').classList.toggle('flipped', fcFlipped);
+  if (fcFlipped) {
+    document.getElementById('fc-hint').textContent = 'Rate yourself below';
+    document.getElementById('fc-rate-btns').classList.remove('hidden');
+  } else {
+    document.getElementById('fc-hint').textContent = 'Click card to reveal answer';
+    document.getElementById('fc-rate-btns').classList.add('hidden');
+  }
+}
+
+function rateCard(rating) {
+  if (rating === 'again') fcAgain.push(fcIndex);
+  else fcGood.push(fcIndex);
+  nextCard();
+}
+
+function nextCard() {
+  if (fcIndex < fcCards.length - 1) { fcIndex++; renderCard(); }
+  else showFcSummary();
+}
+
+function prevCard() {
+  if (fcIndex > 0) { fcIndex--; renderCard(); }
+}
+
+function showFcSummary() {
+  document.getElementById('fc-progress-bar').style.width = '100%';
+  document.getElementById('fc-counter').textContent = fcCards.length + ' / ' + fcCards.length;
+  document.getElementById('fc-card').parentElement.style.display = 'none';
+  document.getElementById('fc-hint').style.display = 'none';
+  document.querySelectorAll('.fc-nav')[0].style.display = 'none';
+  const summary = document.getElementById('fc-summary');
+  summary.classList.remove('hidden');
+  const pct = fcCards.length ? Math.round(fcGood.length / fcCards.length * 100) : 0;
+  document.getElementById('fc-summary-stats').innerHTML =
+    '<strong style="color:var(--emerald)">' + fcGood.length + ' got it</strong> &nbsp;·&nbsp; ' +
+    '<strong style="color:var(--rose)">' + fcAgain.length + ' to review</strong> &nbsp;·&nbsp; ' +
+    pct + '% mastered';
+}
+
+function restartFlashcards() {
+  // Shuffle again, put 'again' cards first
+  const againCards = fcAgain.map(i => fcCards[i]);
+  const goodCards = fcGood.map(i => fcCards[i]);
+  fcCards = shuffleArray(againCards).concat(shuffleArray(goodCards));
+  fcIndex = 0; fcFlipped = false; fcAgain = []; fcGood = [];
+  document.getElementById('fc-card').parentElement.style.display = '';
+  document.getElementById('fc-hint').style.display = '';
+  document.querySelectorAll('.fc-nav')[0].style.display = '';
+  document.getElementById('fc-summary').classList.add('hidden');
+  renderCard();
+}
+
+// ═══════════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════════
+async function startQuiz() {
+  const topic = document.getElementById('review-topic-select').value;
+  if (!topic) { alert('Select a topic first.'); return; }
+  document.getElementById('quiz-setup').classList.add('hidden');
+  document.getElementById('quiz-results').classList.add('hidden');
+  document.getElementById('quiz-player').classList.add('hidden');
+  clearLog('log-quiz-gen');
+  document.getElementById('quiz-setup').classList.remove('hidden');
+  setLoading('btn-start-quiz', true);
+  log('log-quiz-gen', '→ Generating 10 questions for "' + topic + '"...', 'info');
+
+  const data = await api('learn/quiz/generate', { method: 'POST', body: { topic } });
+  setLoading('btn-start-quiz', false);
+  if (data.error) { log('log-quiz-gen', '✗ ' + data.error, 'err'); return; }
+
+  quizData = data.questions;
+  quizUserAnswers = {};
+  quizSubmitted = false;
+
+  document.getElementById('quiz-setup').classList.add('hidden');
+  document.getElementById('quiz-player').classList.remove('hidden');
+  document.getElementById('quiz-title').textContent = '🎯 ' + topic + ' — ' + data.count + ' Questions';
+  document.getElementById('quiz-answered-count').textContent = '0 / ' + data.count + ' answered';
+  document.getElementById('btn-submit-quiz').disabled = true;
+
+  renderQuiz();
+}
+
+function renderQuiz() {
+  const container = document.getElementById('quiz-questions');
+  const letters = ['A', 'B', 'C', 'D'];
+  container.innerHTML = quizData.map((q, qi) => `
+    <div class="quiz-q" id="qq-${qi}">
+      <div class="quiz-q-num">Question ${qi + 1} of ${quizData.length}</div>
+      <div class="quiz-q-text">${q.question}</div>
+      <div class="quiz-opts">
+        ${q.options.map((opt, oi) => `
+          <button class="quiz-opt" id="qopt-${qi}-${oi}" onclick="selectAnswer(${qi}, ${oi})">
+            <span class="quiz-opt-letter">${letters[oi]}</span>
+            ${opt}
+          </button>
+        `).join('')}
+      </div>
+      <div class="quiz-explanation" id="qexp-${qi}">${q.explanation || ''}</div>
+    </div>
+  `).join('');
+}
+
+function selectAnswer(qi, oi) {
+  if (quizSubmitted) return;
+  // Deselect previous for this question
+  quizData[qi].options.forEach((_, idx) => {
+    const btn = document.getElementById('qopt-' + qi + '-' + idx);
+    btn.classList.remove('correct', 'wrong', 'reveal');
+    btn.style.fontWeight = '';
+  });
+  // Select new
+  quizUserAnswers[qi] = oi;
+  document.getElementById('qopt-' + qi + '-' + oi).style.fontWeight = '700';
+  document.getElementById('qopt-' + qi + '-' + oi).style.borderColor = 'rgba(0,229,255,.5)';
+  document.getElementById('qopt-' + qi + '-' + oi).style.color = 'var(--cyan)';
+  // Update counter
+  const answered = Object.keys(quizUserAnswers).length;
+  document.getElementById('quiz-answered-count').textContent = answered + ' / ' + quizData.length + ' answered';
+  document.getElementById('btn-submit-quiz').disabled = answered < quizData.length;
+}
+
+function submitQuiz() {
+  if (Object.keys(quizUserAnswers).length < quizData.length) return;
+  quizSubmitted = true;
+  let correct = 0;
+  quizData.forEach((q, qi) => {
+    const userAns = quizUserAnswers[qi];
+    const rightAns = q.correct;
+    q.options.forEach((_, oi) => {
+      const btn = document.getElementById('qopt-' + qi + '-' + oi);
+      btn.disabled = true;
+      btn.style.fontWeight = ''; btn.style.borderColor = ''; btn.style.color = '';
+      if (oi === rightAns) btn.classList.add(userAns === rightAns ? 'correct' : 'reveal');
+      else if (oi === userAns) btn.classList.add('wrong');
+    });
+    if (userAns === rightAns) correct++;
+    // Show explanation
+    const exp = document.getElementById('qexp-' + qi);
+    if (exp) exp.style.display = 'block';
+  });
+  // Show score
+  document.getElementById('quiz-player').classList.add('hidden');
+  document.getElementById('quiz-results').classList.remove('hidden');
+  document.getElementById('quiz-review-answers').classList.add('hidden');
+  const pct = Math.round(correct / quizData.length * 100);
+  const scoreEl = document.getElementById('quiz-score-num');
+  scoreEl.textContent = correct + '/' + quizData.length;
+  const grade = pct >= 90 ? '🏆 Excellent!' : pct >= 70 ? '✅ Good job!' : pct >= 50 ? '📚 Keep studying' : '💪 Review your notes';
+  const color = pct >= 90 ? 'var(--emerald)' : pct >= 70 ? 'var(--cyan)' : pct >= 50 ? 'var(--amber)' : 'var(--rose)';
+  scoreEl.style.color = color;
+  document.getElementById('quiz-score-label').innerHTML = grade + '&nbsp;&nbsp;·&nbsp;&nbsp;' + pct + '% correct';
+}
+
+function showQuizReview() {
+  const container = document.getElementById('quiz-review-answers');
+  container.classList.remove('hidden');
+  const letters = ['A','B','C','D'];
+  container.innerHTML = '<h3 style="font-size:14px; font-weight:600; margin-bottom:12px;">Answer Review</h3>' +
+    quizData.map((q, qi) => {
+      const userAns = quizUserAnswers[qi];
+      const right = q.correct;
+      const correct = userAns === right;
+      return `<div class="quiz-q" style="margin-bottom:8px;">
+        <div class="quiz-q-num">Q${qi+1} ${correct ? '<span style="color:var(--emerald)">✓ Correct</span>' : '<span style="color:var(--rose)">✗ Wrong</span>'}</div>
+        <div class="quiz-q-text">${q.question}</div>
+        <div style="font-size:12px; margin-top:8px; color:var(--text2);">
+          Your answer: <strong style="color:${correct ? 'var(--emerald)' : 'var(--rose)'}">${letters[userAns]} — ${q.options[userAns]}</strong><br>
+          ${!correct ? 'Correct: <strong style="color:var(--emerald)">' + letters[right] + ' — ' + q.options[right] + '</strong><br>' : ''}
+          <span style="color:var(--muted); font-style:italic; margin-top:4px; display:block;">${q.explanation || ''}</span>
+        </div>
+      </div>`;
+    }).join('');
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+// ── Learn Guide panel ──
+function openGuide() {
+  document.getElementById('guide-overlay').classList.add('open');
+  document.getElementById('guide-panel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeGuide() {
+  document.getElementById('guide-overlay').classList.remove('open');
+  document.getElementById('guide-panel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGuide(); });
+
+// ═══════════════════════════════════════════
+// HEALTH CHECK
+// ═══════════════════════════════════════════
+async function checkHealth() {
+  const h = await api('health');
+  document.getElementById('dot-claude').className = 'status-dot ' + (h.claude_installed ? 'ok' : 'err');
+  document.getElementById('dot-vault').className = 'status-dot ' + (h.vault_exists ? 'ok' : 'err');
+  // Show warnings if any
+  if (h.warnings && h.warnings.length > 0) {
+    const existing = document.getElementById('health-warnings');
+    if (!existing) {
+      const el = document.createElement('div');
+      el.id = 'health-warnings';
+      el.style.cssText = 'background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--amber);';
+      el.innerHTML = h.warnings.map(w => `⚠ ${w}`).join('<br>');
+      document.querySelector('.pipeline') && document.querySelector('.pipeline').before(el);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// PHASE 1: ANALYZE
+// ═══════════════════════════════════════════
+async function analyze() {
+  const rawInput = document.getElementById('topic-input').value.trim();
+  if (!rawInput) return;
+
+  clearLog('log-analyze');
+  setLoading('btn-analyze', true);
+  log('log-analyze', `→ Analyzing "${rawInput}"...`, 'info');
+
+  const data = await api('analyze', { method: 'POST', body: { topic: rawInput } });
+
+  if (data.error) {
+    log('log-analyze', `✗ ${data.error}`, 'err');
+    setLoading('btn-analyze', false);
+    return;
+  }
+
+  // Use the extracted topic from Claude
+  currentTopic = data.topic || rawInput;
+
+  if (currentTopic.toLowerCase() !== rawInput.toLowerCase()) {
+    log('log-analyze', `  Topic: "${rawInput}" → <span style="color:var(--cyan);font-weight:700">${currentTopic}</span>`, 'info');
+  }
+
+  log('log-analyze', `✓ Found ${data.scan.related_count} related notes (${data.scan.total_notes} total)`, 'ok');
+  log('log-analyze', `  Level: ${data.analysis.knowledge_level}`, '');
+  log('log-analyze', `  Gaps: ${data.analysis.gaps.length}`, '');
+
+  // Show gaps in scout step
+  const gapsEl = document.getElementById('gaps-list');
+  gapsEl.innerHTML = '<div style="font-size:12px; color:var(--text2); margin-bottom:8px;">Knowledge gaps found:</div>';
+  data.analysis.gaps.forEach(g => {
+    gapsEl.innerHTML += `<span style="display:inline-block;padding:4px 10px;margin:2px;border-radius:6px;background:rgba(168,85,247,.1);color:var(--violet);font-size:12px;font-family:'JetBrains Mono',monospace">${g}</span>`;
+  });
+
+  setLoading('btn-analyze', false);
+  markDone('step-topic');
+  activateStep('step-scout');
+}
+
+// Allow Enter key
+document.getElementById('topic-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyze();
+});
+
+// ═══════════════════════════════════════════
+// PHASE 1b: SCOUT
+// ═══════════════════════════════════════════
+async function scout() {
+  clearLog('log-scout');
+  setLoading('btn-scout', true);
+  log('log-scout', `→ Scouting resources for "${currentTopic}"...`, 'info');
+
+  const data = await api('scout', { method: 'POST', body: { topic: currentTopic } });
+
+  const resources = data.resources || [];
+  log('log-scout', `✓ Found ${resources.length} resources`, 'ok');
+
+  const rl = document.getElementById('resources-list');
+  rl.innerHTML = '';
+  const icons = { youtube: '🎬', article: '📄', documentation: '📚', paper: '📑' };
+  resources.forEach(r => {
+    rl.innerHTML += `<div class="note-item">
+      <span class="ni-icon">${icons[r.type] || '🔗'}</span>
+      <span>${r.title}</span>
+      <a href="${r.url}" target="_blank" class="ni-path" style="color:var(--cyan)">open ↗</a>
+    </div>`;
+  });
+
+  setLoading('btn-scout', false);
+  markDone('step-scout');
+  activateStep('step-prompt');
+}
+
+// ═══════════════════════════════════════════
+// PHASE 2: GENERATE PROMPT
+// ═══════════════════════════════════════════
+let generatedURLs = '';
+let generatedPromptText = '';
+
+async function generatePrompt() {
+  setLoading('btn-prompt', true);
+  const data = await api('generate-prompt', { method: 'POST', body: { topic: currentTopic } });
+
+  if (data.prompt) {
+    // URLs come pre-separated from the API
+    generatedURLs = data.urls || '';
+
+    // Merge user resources into the URL list
+    const userUrlsOnly = userResources.filter(u => u.startsWith('http'));
+    const allURLs = [generatedURLs, ...userUrlsOnly].filter(Boolean).join('\n');
+
+    // Extract just the prompt portion (Step 2 content)
+    const step2Match = data.prompt.match(/STEP 2:.*?\n([\s\S]*?)═{10,}/);
+    generatedPromptText = step2Match ? step2Match[1].trim() : data.prompt;
+
+    // Show URLs section — display merged list
+    document.getElementById('urls-section').classList.remove('hidden');
+    document.getElementById('urls-block').textContent = allURLs;
+
+    // Show prompt section
+    document.getElementById('prompt-section').classList.remove('hidden');
+    document.getElementById('prompt-output').textContent = generatedPromptText;
+  }
+
+  setLoading('btn-prompt', false);
+  markDone('step-prompt');
+  activateStep('step-ingest');
+  refreshStaging();
+}
+
+async function copyURLs() {
+  try {
+    await navigator.clipboard.writeText(generatedURLs);
+    document.getElementById('btn-copy-urls').textContent = '✓ Copied!';
+    setTimeout(() => document.getElementById('btn-copy-urls').textContent = '📋 Copy URLs', 2000);
+  } catch (e) {}
+}
+
+async function copyPrompt() {
+  try {
+    await navigator.clipboard.writeText(generatedPromptText);
+    document.getElementById('btn-copy-prompt').textContent = '✓ Copied!';
+    setTimeout(() => document.getElementById('btn-copy-prompt').textContent = '📋 Copy Prompt', 2000);
+  } catch (e) {}
+}
+
+// ═══════════════════════════════════════════
+// USER RESOURCES
+// ═══════════════════════════════════════════
+let userResources = [];
+
+function addUserResource() {
+  const input = document.getElementById('user-resource-url');
+  const url = input.value.trim();
+  if (!url) return;
+
+  // Accept URLs or just text descriptions
+  userResources.push(url);
+  input.value = '';
+  renderUserResources();
+}
+
+// Allow Enter key in the URL input
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('user-resource-url');
+  if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') addUserResource(); });
+});
+
+function removeUserResource(idx) {
+  userResources.splice(idx, 1);
+  renderUserResources();
+}
+
+function renderUserResources() {
+  const el = document.getElementById('user-resources-list');
+
+  if (userResources.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = userResources.map((url, i) => {
+    const isUrl = url.startsWith('http');
+    const display = isUrl ? url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60) : url.slice(0, 60);
+    return `<div style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px;">
+      <span style="color:var(--violet);">+</span>
+      ${isUrl ? `<a href="${url}" target="_blank" style="color:var(--cyan); text-decoration:none; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${display}</a>` : `<span style="color:var(--text2); flex:1;">${display}</span>`}
+      <button onclick="removeUserResource(${i})" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0 4px;">×</button>
+    </div>`;
+  }).join('');
+}
+
+async function copyAllURLs() {
+  const userUrlsOnly = userResources.filter(u => u.startsWith('http'));
+  const all = [generatedURLs, ...userUrlsOnly].filter(Boolean).join('\n');
+  try {
+    await navigator.clipboard.writeText(all.trim());
+    document.getElementById('btn-copy-urls').textContent = '✓ Copied!';
+    setTimeout(() => document.getElementById('btn-copy-urls').textContent = '📋 Copy All URLs', 2000);
+  } catch (e) {}
+}
+
+// ═══════════════════════════════════════════
+// PHASE 3: PLAN + WRITE (SSE)
+// ═══════════════════════════════════════════
+
+// Saved plan from the last /api/ingest/plan call (can be edited before writing)
+let currentPlan = null;
+
+async function refreshStagingStatus() {
+  const data = await api('staging/list');
+  const count = (data.files || []).length;
+  document.getElementById('staging-status').innerHTML = count > 0
+    ? `<span style="color:var(--emerald)">✓ ${count} file(s) in staging ready to process</span>`
+    : `<span style="color:var(--amber)">⚠ No files in staging yet — drop or paste research above</span>`;
+}
+
+// ── Step 4a: Plan ──
+async function planNotes() {
+  clearLog('log-plan');
+  document.getElementById('plan-review').classList.add('hidden');
+  document.getElementById('ingest-results').classList.add('hidden');
+  setLoading('btn-plan', true);
+  log('log-plan', `→ Analysing research and planning notes for "${currentTopic}"...`, 'info');
+
+  const data = await api('ingest/plan', { method: 'POST', body: { topic: currentTopic } });
+
+  setLoading('btn-plan', false);
+
+  if (data.error) {
+    log('log-plan', `✗ ${data.error}`, 'err');
+    return;
+  }
+
+  currentPlan = data.plan;
+  log('log-plan', `✓ Planned ${data.count} notes — review below before writing`, 'ok');
+
+  // Render plan list
+  const planList = document.getElementById('plan-list');
+  document.getElementById('plan-count').textContent = `${data.count} notes planned`;
+  planList.innerHTML = '';
+  currentPlan.forEach((n, i) => {
+    planList.innerHTML += `
+      <div class="plan-item" id="plan-item-${i}">
+        <span style="font-size:16px; margin-top:1px;">📝</span>
+        <div style="flex:1;">
+          <div class="pi-title">${n.title}</div>
+          <div class="pi-summary">${n.summary || ''}</div>
+        </div>
+        <button onclick="removePlanItem(${i})" title="Remove from plan"
+          style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;">×</button>
+      </div>`;
+  });
+
+  document.getElementById('plan-review').classList.remove('hidden');
+}
+
+function removePlanItem(idx) {
+  currentPlan.splice(idx, 1);
+  // Re-render plan
+  const planList = document.getElementById('plan-list');
+  document.getElementById('plan-count').textContent = `${currentPlan.length} notes planned`;
+  planList.innerHTML = '';
+  currentPlan.forEach((n, i) => {
+    planList.innerHTML += `
+      <div class="plan-item" id="plan-item-${i}">
+        <span style="font-size:16px; margin-top:1px;">📝</span>
+        <div style="flex:1;">
+          <div class="pi-title">${n.title}</div>
+          <div class="pi-summary">${n.summary || ''}</div>
+        </div>
+        <button onclick="removePlanItem(${i})" title="Remove from plan"
+          style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;">×</button>
+      </div>`;
+  });
+  if (currentPlan.length === 0) {
+    document.getElementById('plan-review').classList.add('hidden');
+  }
+}
+
+// ── Step 4b: Write (SSE) ──
+function writeNotes() {
+  if (!currentPlan || currentPlan.length === 0) return;
+
+  clearLog('log-ingest');
+  document.getElementById('ingest-results').classList.add('hidden');
+
+  const btn = document.getElementById('btn-write');
+  btn.disabled = true;
+  btn._text = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Writing...';
+
+  log('log-ingest', `→ Writing ${currentPlan.length} notes for "${currentTopic}"...`, 'info');
+
+  // Progress bar
+  const logEl = document.getElementById('log-ingest');
+  const pbWrap = document.createElement('div');
+  pbWrap.className = 'progress-bar-wrap';
+  pbWrap.innerHTML = '<div class="progress-bar-fill" id="pb-fill" style="width:0%"></div>';
+  logEl.appendChild(pbWrap);
+
+  const source = new EventSource('/api/ingest/write?' + new URLSearchParams({
+    topic: currentTopic,
+    plan: JSON.stringify(currentPlan),
+  }));
+
+  // Actually POST — EventSource only does GET. Use fetch+ReadableStream instead.
+  source.close();
+  _writeWithFetch(currentPlan);
+}
+
+async function _writeWithFetch(plan) {
+  const btn = document.getElementById('btn-write');
+  const total = plan.length;
+  let written = 0;
+
+  try {
+    const resp = await fetch('/api/ingest/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: currentTopic, plan_override: plan }),
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop(); // keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let evt;
+        try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+        _handleWriteEvent(evt, total);
+        if (evt.type === 'done') { written = evt.written; }
+      }
+    }
+  } catch (err) {
+    log('log-ingest', `✗ Stream error: ${err}`, 'err');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = btn._text || '🧠 Write These Notes';
+  markDone('step-ingest');
+}
+
+function _handleWriteEvent(evt, total) {
+  const fill = document.getElementById('pb-fill');
+
+  switch (evt.type) {
+    case 'start':
+      log('log-ingest', `  Planning complete — writing ${evt.total} notes...`, 'info');
+      break;
+
+    case 'progress':
+      if (fill) fill.style.width = `${Math.round((evt.index / total) * 100)}%`;
+      log('log-ingest', `  ✎ [${evt.index}/${total}] ${evt.title || evt.status}...`, '');
+      break;
+
+    case 'note_written': {
+      if (fill) fill.style.width = `${Math.round((evt.index / total) * 100)}%`;
+      const q = evt.quality || {};
+      const grade = q.grade || '?';
+      const badge = `<span class="q-badge q-${grade}">${grade} ${q.total || '?'}/100</span>`;
+      const words = q.word_count ? `<span style="color:var(--muted);font-size:10px;margin-left:6px;">${q.word_count}w · ${q.wikilinks || 0} links</span>` : '';
+      log('log-ingest',
+        `  ✓ [${evt.index}/${total}] ${evt.title} ${badge}${words}`, 'ok');
+      // Mark plan item done
+      const item = document.getElementById(`plan-item-${evt.index - 1}`);
+      if (item) {
+        item.style.borderColor = 'rgba(16,185,129,.3)';
+        item.querySelector('.pi-title').insertAdjacentHTML('beforeend',
+          ` ${badge}`);
+      }
+      break;
+    }
+
+    case 'skip':
+      log('log-ingest', `  ↩ [${evt.index}/${total}] ${evt.title} — skipped (already exists)`, 'warn');
+      break;
+
+    case 'error':
+      log('log-ingest', `  ✗ [${evt.index}/${total}] ${evt.title}: ${evt.error}`, 'err');
+      break;
+
+    case 'done': {
+      if (fill) fill.style.width = '100%';
+      log('log-ingest', `✓ Done! Wrote ${evt.written} note(s)`, 'ok');
+      if (evt.errors && evt.errors.length > 0) {
+        log('log-ingest', `  ⚠ ${evt.errors.length} error(s) — check above`, 'warn');
+      }
+
+      // Summary results card
+      const results = document.getElementById('ingest-results');
+      results.classList.remove('hidden');
+      let html = '<div class="result-grid">';
+      html += `<div class="result-card"><div class="rc-title">Notes Written</div><div class="rc-val emerald">${evt.written}</div></div>`;
+      html += `<div class="result-card"><div class="rc-title">MOC</div><div class="rc-val cyan">✓</div></div>`;
+      if (evt.errors && evt.errors.length > 0) {
+        html += `<div class="result-card"><div class="rc-title">Errors</div><div class="rc-val rose">${evt.errors.length}</div></div>`;
+      }
+      html += '</div>';
+
+      if (evt.notes && evt.notes.length) {
+        html += '<div style="margin-top:16px">';
+        evt.notes.forEach(n => {
+          if (n.skipped) return;
+          const q = n.quality || {};
+          const grade = q.grade || '?';
+          html += `<div class="note-item">
+            <span class="ni-icon">📝</span>
+            <span>${n.title}</span>
+            <span class="q-badge q-${grade}" style="margin-left:auto;">${grade}</span>
+          </div>`;
+        });
+        html += '</div>';
+      }
+      results.innerHTML = html;
+      refreshStaging();
+      break;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// STAGING
+// ═══════════════════════════════════════════
+function renderFileList(files, elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  if (!files || files.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted); font-size:13px;">No files yet</div>';
+    return;
+  }
+  el.innerHTML = '';
+  files.forEach(f => {
+    const size = f.size > 1024 ? `${(f.size/1024).toFixed(1)} KB` : `${f.size} B`;
+    el.innerHTML += `<div class="file-item"><span class="fname">📄 ${f.name}</span><span class="fsize">${size}</span></div>`;
+  });
+}
+
+async function refreshStaging() {
+  const data = await api('staging/list');
+  const files = data.files || [];
+  renderFileList(files, 'staging-files');
+  renderFileList(files, 'staged-files-inline');
+  renderFileList(files, 'direct-staged-files');
+
+  // Update staging folder path display
+  const pathEl = document.getElementById('staging-folder-path');
+  if (pathEl && data.folder) pathEl.textContent = data.folder;
+
+  // Enable/disable plan button based on file count
+  const btn = document.getElementById('btn-plan');
+  if (btn) btn.disabled = files.length === 0;
+  const btnDirect = document.getElementById('btn-direct-ingest');
+  if (btnDirect) btnDirect.disabled = files.length === 0;
+
+  // Update status text (both modes)
+  const statusText = files.length > 0
+    ? `<span style="color:var(--emerald)">✓ ${files.length} file(s) ready to process</span>`
+    : `<span style="color:var(--text2)">Drop or paste research above</span>`;
+
+  const status = document.getElementById('staging-status');
+  if (status) status.innerHTML = statusText;
+  const dStatus = document.getElementById('direct-staging-status');
+  if (dStatus) dStatus.innerHTML = statusText;
+}
+
+async function refreshStagingStatus() {
+  await refreshStaging();
+}
+
+async function uploadFiles(files) {
+  const fd = new FormData();
+  for (const f of files) fd.append('files', f);
+  await fetch('/api/staging/upload', { method: 'POST', body: fd });
+  await refreshStaging();
+}
+
+async function pasteToStaging() {
+  const text = document.getElementById('paste-area').value.trim();
+  if (!text) return;
+  const name = document.getElementById('paste-name').value.trim() || `paste_${Date.now()}.md`;
+  await api('staging/paste', { method: 'POST', body: { text, name } });
+  document.getElementById('paste-area').value = '';
+  document.getElementById('paste-name').value = '';
+  await refreshStaging();
+}
+
+function dzOver(e) { e.preventDefault(); e.currentTarget.classList.add('dragover'); }
+function dzLeave(e) { e.currentTarget.classList.remove('dragover'); }
+function dzDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  uploadFiles(e.dataTransfer.files);
+}
+
+// ═══════════════════════════════════════════
+// VAULT
+// ═══════════════════════════════════════════
+async function refreshVault() {
+  const stats = await api('vault/stats');
+  document.getElementById('stat-total').textContent = stats.total || 0;
+  document.getElementById('stat-ai').textContent = stats.ai_generated || 0;
+  document.getElementById('stat-review').textContent = stats.needs_review || 0;
+  document.getElementById('stat-validated').textContent = (stats.ai_generated || 0) - (stats.needs_review || 0);
+
+  // Show index status
+  const idx = await api('vault/index');
+  const idxStatus = document.getElementById('index-status');
+  if (idx.count !== undefined) {
+    idxStatus.innerHTML = `${idx.count} notes indexed`;
+  }
+
+  const review = await api('vault/review');
+  const el = document.getElementById('review-list');
+  if (!review.notes || review.notes.length === 0) {
+    el.innerHTML = '<div style="color:var(--emerald); font-size:13px;">✓ All caught up!</div>';
+    return;
+  }
+  el.innerHTML = '';
+  review.notes.forEach(n => {
+    el.innerHTML += `<div class="note-item"><span class="ni-icon">📝</span> ${n.name} <span class="ni-path">${n.path}</span></div>`;
+  });
+}
+
+// ═══════════════════════════════════════════
+// INDEX
+// ═══════════════════════════════════════════
+async function rebuildIndex() {
+  setLoading('btn-rebuild-index', true);
+  document.getElementById('index-status').textContent = 'Rebuilding...';
+  const data = await api('vault/index/rebuild', { method: 'POST', body: {} });
+  setLoading('btn-rebuild-index', false);
+  if (data.count !== undefined) {
+    document.getElementById('index-status').innerHTML = `<span style="color:var(--emerald)">✓ Indexed ${data.count} notes</span>`;
+  } else {
+    document.getElementById('index-status').innerHTML = `<span style="color:var(--rose)">Error rebuilding</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// CLEANUP
+// ═══════════════════════════════════════════
+async function scanGarbage() {
+  setLoading('btn-scan-garbage', true);
+  const data = await api('vault/cleanup', { method: 'POST', body: { dry_run: true } });
+  setLoading('btn-scan-garbage', false);
+
+  const el = document.getElementById('garbage-list');
+  if (!data.found || data.found.length === 0) {
+    el.innerHTML = '<div style="color:var(--emerald); font-size:13px;">✓ No corrupted notes found</div>';
+    document.getElementById('btn-remove-garbage').classList.add('hidden');
+    return;
+  }
+
+  document.getElementById('btn-remove-garbage').classList.remove('hidden');
+  el.innerHTML = `<div style="color:var(--amber); font-size:13px; margin-bottom:8px;">Found ${data.found.length} corrupted note(s):</div>`;
+  data.found.forEach(f => {
+    el.innerHTML += `<div class="note-item">
+      <span class="ni-icon" style="color:var(--rose);">⚠</span>
+      <span>${f.name}</span>
+      <span class="ni-path">${f.path}</span>
+    </div>`;
+  });
+}
+
+async function removeGarbage() {
+  if (!confirm('Delete all corrupted notes? This cannot be undone.')) return;
+  setLoading('btn-remove-garbage', true);
+  const data = await api('vault/cleanup', { method: 'POST', body: { dry_run: false } });
+  setLoading('btn-remove-garbage', false);
+
+  const el = document.getElementById('garbage-list');
+  el.innerHTML = `<div style="color:var(--emerald); font-size:13px;">✓ Removed ${data.removed.length} corrupted note(s)</div>`;
+  document.getElementById('btn-remove-garbage').classList.add('hidden');
+  refreshVault();
+}
+
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+async function loadConfig() {
+  const cfg = await api('config');
+  const fields = ['vault_path', 'notes_folder', 'knowledge_folder', 'resources_folder', 'staging_folder', 'prompts_folder'];
+  fields.forEach(f => {
+    const el = document.getElementById('cfg-' + f);
+    if (el && cfg[f]) el.value = cfg[f];
+  });
+  const tags = cfg.default_tags || [];
+  document.getElementById('cfg-tags').value = tags.join(', ');
+}
+
+async function saveConfig() {
+  const cfg = {};
+  ['vault_path', 'notes_folder', 'knowledge_folder', 'resources_folder', 'staging_folder', 'prompts_folder'].forEach(f => {
+    const el = document.getElementById('cfg-' + f);
+    if (el && el.value) cfg[f] = el.value;
+  });
+  const tags = document.getElementById('cfg-tags').value;
+  if (tags) cfg.default_tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+
+  const r = await api('config', { method: 'POST', body: cfg });
+  document.getElementById('config-status').innerHTML = r.ok
+    ? '<span style="color:var(--emerald)">✓ Saved!</span>'
+    : '<span style="color:var(--rose)">✗ Error saving</span>';
+
+  checkHealth();
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+checkHealth();
+loadConfig();
+</script>
+</body>
+</html>

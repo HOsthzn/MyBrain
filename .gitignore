@@ -1,0 +1,51 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+
+# ── Environment / secrets ──────────────────────────────────────────────────────
+.env
+.env.*
+*.key
+*.pem
+*.token
+
+# ── Local config (contains personal vault path + credentials) ─────────────────
+# Copy config.yaml.example → config.yaml and fill in your values.
+config.yaml
+
+# ── Auto-generated vault indexes ──────────────────────────────────────────────
+_index.json
+_index.md
+
+# ── Embeddings vector index (large binary files) ──────────────────────────────
+.embeddings/
+
+# ── Session / state files ─────────────────────────────────────────────────────
+.brain_state.json
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/

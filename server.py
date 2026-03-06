@@ -1143,23 +1143,24 @@ def ingest():
             note_content = clean_note_content(r["output"])
 
             # Validate — reject garbage content (rate limits, errors, etc.)
+            # Only check the first 300 chars for rejection phrases — these phrases
+            # can legitimately appear in note body (e.g. "try again" in exception handling)
+            header = note_content[:300].lower()
             rejection_phrases = [
                 "hit your limit",
                 "rate limit",
-                "resets ",
-                "try again",
+                "resets 5pm",
+                "resets at",
                 "usage cap",
                 "too many requests",
-                "apologize",
-                "I can't",
-                "I cannot",
-                "as an AI",
+                "as an ai language model",
+                "as an ai assistant",
+                "i'm unable to",
             ]
-            content_lower = note_content.lower()
             is_garbage = (
                 len(note_content) < 100
                 or not note_content.lstrip().startswith("---")
-                or any(phrase in content_lower for phrase in rejection_phrases)
+                or any(phrase in header for phrase in rejection_phrases)
             )
 
             if is_garbage:
